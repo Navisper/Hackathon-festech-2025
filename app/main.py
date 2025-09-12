@@ -6,26 +6,32 @@ from contextlib import asynccontextmanager
 from . import crud, models, schemas
 from .database import engine, get_db
 from fastapi import FastAPI, BackgroundTasks, HTTPException
+from app.ai_service import get_ai_response
 from pydantic import BaseModel
 from typing import Optional
 from .openrouter_client import get_ai_response
 from .supabase_client import store_interaction
+from sqlalchemy.orm import Session
 import os
 from dotenv import load_dotenv
+from .database import SessionLocal
 
 load_dotenv()
 
 # Esta función 'lifespan' se ejecuta al iniciar la aplicación.
 # Aquí le decimos a SQLAlchemy que cree todas las tablas definidas en nuestros modelos.
 # Nota: En una aplicación de producción real, se usarían herramientas de migración como Alembic.
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(models.Base.metadata.create_all)
-    yield
+#@asynccontextmanager
+#async def lifespan(app: FastAPI):
+#    async with engine.begin() as conn:
+#        await conn.run_sync(models.Base.metadata.create_all)
+#    yield
+
+# Crear tablas (si no existen)
+models.Base.metadata.create_all(bind=engine)
 
 # Creamos la instancia de la aplicación FastAPI, pasándole la función lifespan.
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 
 @app.post("/peliculas", response_model=schemas.Movie, status_code=status.HTTP_201_CREATED, tags=["Películas"])
@@ -123,3 +129,8 @@ async def chat_ai(request: ChatRequest, background_tasks: BackgroundTasks):
         suggestion = "Parece que faltan datos. Pregunta por fechas y presupuesto."
 
     return {"respuesta": ai_text, "suggestion_followup": suggestion}
+
+
+@app.get("/hola")
+def read_root(db: Session = Depends(get_db)):
+    return {"message": "Conexión funcionando 🚀"}

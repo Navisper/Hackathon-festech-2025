@@ -1,38 +1,27 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, declarative_base
+# app/database.py
 import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
-import ssl
 
+# Cargar variables de entorno
 load_dotenv()
 
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# Crear motor de conexión
+engine = create_engine(DATABASE_URL)
 
-# Crear contexto SSL
-ssl_context = ssl.create_default_context(cafile=None)
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE  # ⚠️ Para producción deberías usar el certificado real de Supabase
+# Dependency para obtener la DB
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=True,
-    connect_args={"ssl": ssl_context}
-)
+# Crear sesión
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-SessionLocal = sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False
-)
-
+# Base para los modelos
 Base = declarative_base()
-
-async def get_db():
-    async with SessionLocal() as session:
-        yield session
