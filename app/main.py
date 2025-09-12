@@ -12,6 +12,9 @@ from .database import engine, get_db
 # Nueva importación para el servicio de IA
 from .ai_service import get_ai_response
 
+#Importacion CORS
+from fastapi.middleware.cors import CORSMiddleware
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,6 +25,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan, title="Tolima Conecta API")
 
+# Middleware de CORS para desarrollo local
+origins = ["*"] # Permite todas las conexiones
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # --- Endpoints para Proveedores (Sin cambios) ---
 
