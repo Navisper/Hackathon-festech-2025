@@ -26,7 +26,7 @@ async def get_ai_response(messages: list) -> str:
         response = client.chat.completions.create(
             model=DEFAULT_MODEL,
             messages=messages_with_short,
-            max_tokens=500
+            max_tokens=250
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
