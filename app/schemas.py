@@ -14,7 +14,8 @@ class ReseñaCreate(ReseñaBase):
 class Reseña(ReseñaBase):
     id: int
     class Config:
-        orm_mode = True
+        # ----- CORRECCIÓN AQUÍ -----
+        from_attributes = True
 
 # --- Esquemas para Proveedores (Actualizados) ---
 class ProveedorBase(BaseModel):
@@ -43,8 +44,7 @@ class ProveedorUpdate(BaseModel):
     ciudad: Optional[str] = None
     latitud: Optional[float] = None
     longitud: Optional[float] = None
-    disponible: Optional[bool] = None # Campo clave para el checkbox
-
+    disponible: Optional[bool] = None
 
 # Esquema para la vista de lista
 class ProveedorResumen(BaseModel):
@@ -57,15 +57,16 @@ class ProveedorResumen(BaseModel):
     longitud: Optional[float] = None
 
     class Config:
-        orm_mode = True
+        # ----- CORRECCIÓN AQUÍ -----
+        from_attributes = True
 
 # Esquema para la vista de detalle
 class ProveedorDetalle(ProveedorResumen):
     descripcion_corta: str
     telefono: str
     direccion: str
-    # Si implementan las reseñas, este campo ya estará listo para usarse
     reseñas: List[Reseña] = []
 
     class Config:
-        orm_mode = True
+        # ----- CORRECCIÓN AQUÍ -----
+        from_attributes = True

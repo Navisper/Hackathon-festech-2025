@@ -59,6 +59,17 @@ async def delete_proveedor(db: AsyncSession, proveedor_id: int):
     await db.commit()
     return db_proveedor
 
+async def delete_proveedor(db: AsyncSession, proveedor_id: int):
+    """Elimina un proveedor de la base de datos."""
+    db_proveedor = await get_proveedor(db, proveedor_id=proveedor_id)
+    if not db_proveedor:
+        return None
+    
+    await db.delete(db_proveedor)
+    await db.commit()
+    return db_proveedor
+
+
 # --- (BONUS) Funciones CRUD para Reseñas (si hay tiempo) ---
 
 async def create_reseña_para_proveedor(db: AsyncSession, reseña: schemas.ReseñaCreate, proveedor_id: int):
@@ -78,3 +89,16 @@ async def get_reseñas_de_proveedor(db: AsyncSession, proveedor_id: int, skip: i
         .limit(limit)
     )
     return result.scalars().all()
+
+async def delete_reseña(db: AsyncSession, reseña_id: int):
+    """Elimina una reseña específica de la base de datos."""
+    query = select(models.Reseña).where(models.Reseña.id == reseña_id)
+    result = await db.execute(query)
+    db_reseña = result.scalar_one_or_none()
+    
+    if not db_reseña:
+        return None
+        
+    await db.delete(db_reseña)
+    await db.commit()
+    return db_reseña

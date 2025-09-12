@@ -1,11 +1,17 @@
 # app/main.py
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Optional
 from contextlib import asynccontextmanager
+from pydantic import BaseModel
 
+# Tus importaciones existentes
 from . import crud, models, schemas
 from .database import engine, get_db
+
+# Nueva importación para el servicio de IA
+from .ai_service import get_ai_response
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -17,7 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan, title="Tolima Conecta API")
 
 
-# --- Endpoints para Proveedores (Prioridad #1 y #2) ---
+# --- Endpoints para Proveedores (Sin cambios) ---
 
 @app.post("/proveedores", response_model=schemas.ProveedorDetalle, status_code=status.HTTP_201_CREATED, tags=["Proveedores"])
 async def create_new_proveedor(proveedor: schemas.ProveedorCreate, db: AsyncSession = Depends(get_db)):
@@ -49,13 +55,22 @@ async def update_existing_proveedor(proveedor_id: int, proveedor_update: schemas
         raise HTTPException(status_code=404, detail="Proveedor no encontrado")
     return updated_proveedor
 
+@app.delete("/proveedores/{proveedor_id}", response_model=schemas.ProveedorDetalle, tags=["Proveedores"])
+async def delete_existing_proveedor(proveedor_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Elimina un proveedor y todas sus reseñas asociadas (en cascada).
+    """
+    deleted_proveedor = await crud.delete_proveedor(db, proveedor_id=proveedor_id)
+    if deleted_proveedor is None:
+        raise HTTPException(status_code=404, detail="Proveedor no encontrado")
+    return deleted_proveedor
 
-# --- (BONUS) Endpoints para Reseñas (si hay tiempo) ---
+
+# --- (BONUS) Endpoints para Reseñas (Sin cambios) ---
 
 @app.post("/proveedores/{proveedor_id}/reseñas", response_model=schemas.Reseña, status_code=status.HTTP_201_CREATED, tags=["Reseñas"])
 async def create_review_for_proveedor(proveedor_id: int, reseña: schemas.ReseñaCreate, db: AsyncSession = Depends(get_db)):
     """Crea una nueva reseña para un proveedor específico."""
-    # Primero, verificamos que el proveedor exista
     db_proveedor = await crud.get_proveedor(db, proveedor_id=proveedor_id)
     if db_proveedor is None:
         raise HTTPException(status_code=404, detail="Proveedor no encontrado, no se puede crear la reseña.")
@@ -68,3 +83,69 @@ async def read_reviews_for_proveedor(proveedor_id: int, db: AsyncSession = Depen
     if db_proveedor is None:
         raise HTTPException(status_code=404, detail="Proveedor no encontrado.")
     return await crud.get_reseñas_de_proveedor(db=db, proveedor_id=proveedor_id)
+
+@app.delete("/reseñas/{reseña_id}", response_model=schemas.Reseña, tags=["Reseñas"])
+async def delete_existing_reseña(reseña_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Elimina una reseña específica por su ID.
+    """
+    deleted_reseña = await crud.delete_reseña(db, reseña_id=reseña_id)
+    if deleted_reseña is None:
+        raise HTTPException(status_code=404, detail="Reseña no encontrada")
+    return deleted_reseña
+
+
+# ----- INICIO DE LA INTEGRACIÓN DE IA -----
+
+# 1. Definimos los modelos de Pydantic para la petición y respuesta del chat
+class ChatRequest(BaseModel):
+    usuario: Optional[str] = "Anónimo"
+    preferencias: str
+    fechas: Optional[str] = None
+    presupuesto: Optional[str] = None
+    personas: Optional[int] = 1
+
+class ChatResponse(BaseModel):
+    respuesta: str
+
+# 2. Definimos el prompt del sistema para la IA
+SYSTEM_PROMPT = {
+    "role": "system",
+    "content": "Eres un asesor turístico experto en el Tolima, Colombia. Tu objetivo es ayudar al usuario a planificar un viaje increíble. Usa la información de los proveedores disponibles para dar recomendaciones concretas. Sé amable y conversacional."
+}
+
+# 3. Creamos el endpoint principal del chat
+@app.post("/api/ai/chat", response_model=ChatResponse, tags=["IA Turística"])
+async def chat_ai(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+    
+    # Obtenemos la información de todos los proveedores disponibles desde nuestra base de datos
+    proveedores_disponibles = await crud.get_proveedores(db, limit=100) # Usamos un límite razonable
+    
+    # Creamos un contexto con la información de los proveedores para la IA
+    contexto_proveedores = "Proveedores Disponibles en Tolima:\n"
+    for p in proveedores_disponibles:
+        if p.disponible: # Solo incluimos los que están marcados como disponibles
+            contexto_proveedores += f"- ID: {p.id}, Nombre: {p.nombre}, Tipo: {p.tipo_proveedor}, Ciudad: {p.ciudad}, Descripción: {p.descripcion_corta}\n"
+
+    # Construimos el prompt final para el usuario
+    user_content = (
+        f"Aquí tienes información sobre los proveedores actuales:\n{contexto_proveedores}\n"
+        f"--- \n"
+        f"Ahora, por favor, ayúdame con mi viaje. Mis preferencias son:\n"
+        f"Preferencias: {request.preferencias}\n"
+        f"Fechas: {request.fechas or 'No especificadas'}\n"
+        f"Presupuesto: {request.presupuesto or 'No especificado'}\n"
+        f"Número de personas: {request.personas}\n"
+    )
+
+    user_message = {"role": "user", "content": user_content}
+
+    try:
+        # Llamamos al servicio de IA con el contexto y la petición del usuario
+        ai_text = await get_ai_response([SYSTEM_PROMPT, user_message])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al contactar el servicio de IA: {str(e)}")
+
+    return ChatResponse(respuesta=ai_text)
+
+# ----- FIN DE LA INTEGRACIÓN DE IA -----
