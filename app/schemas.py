@@ -30,6 +30,22 @@ class ProveedorBase(BaseModel):
 class ProveedorCreate(ProveedorBase):
     pass
 
+class ProveedorUpdate(BaseModel):
+    """
+    Esquema para actualizar un proveedor.
+    Todos los campos son opcionales para permitir actualizaciones parciales.
+    """
+    nombre: Optional[str] = None
+    tipo_proveedor: Optional[str] = None
+    descripcion_corta: Optional[str] = None
+    telefono: Optional[str] = None
+    direccion: Optional[str] = None
+    ciudad: Optional[str] = None
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
+    disponible: Optional[bool] = None # Campo clave para el checkbox
+
+
 # Esquema para la vista de lista
 class ProveedorResumen(BaseModel):
     id: int

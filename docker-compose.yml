@@ -10,7 +10,7 @@ services:
       - .env # El contenedor 'db' carga estas variables directamente
 
   api:
-    image: daldeoscoder/icinema-api:1.0 
+    image: daldeoscoder/hackaton2025:5.0 
     ports:
       - "8000:8000"
     environment:
