@@ -35,36 +35,27 @@ app = FastAPI()
 
 
 # --- Endpoints para Proveedores ---
-
 @app.post("/proveedores", response_model=schemas.ProveedorDetalle, status_code=status.HTTP_201_CREATED, tags=["Proveedores"])
 async def create_new_proveedor(proveedor: schemas.ProveedorCreate, db: AsyncSession = Depends(get_db)):
-    """Crea un nuevo proveedor. Usado por el formulario de registro."""
-    return await crud.create_proveedor(db=db, proveedor=proveedor.dict())
+    return await crud.create_proveedor(db=db, proveedor=proveedor)
 
 @app.get("/proveedores", response_model=List[schemas.ProveedorResumen], tags=["Proveedores"])
-async def read_proveedores(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
-    """Obtiene una lista de todos los proveedores para el mapa y la lista principal."""
-    proveedores = await crud.get_proveedores(db, skip=skip, limit=limit)
-    return proveedores
+def read_proveedores(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_proveedores(db, skip=skip, limit=limit)
 
 @app.get("/proveedores/{proveedor_id}", response_model=schemas.ProveedorDetalle, tags=["Proveedores"])
 async def read_proveedor_details(proveedor_id: int, db: AsyncSession = Depends(get_db)):
-    """Obtiene la vista detallada de un solo proveedor."""
-    db_proveedor = await crud.get_proveedor(db, proveedor_id=proveedor_id)
-    if db_proveedor is None:
+    proveedor = await crud.get_proveedor(db, proveedor_id=proveedor_id)
+    if proveedor is None:
         raise HTTPException(status_code=404, detail="Proveedor no encontrado")
-    return db_proveedor
+    return proveedor
 
 @app.put("/proveedores/{proveedor_id}", response_model=schemas.ProveedorDetalle, tags=["Proveedores"])
 async def update_existing_proveedor(proveedor_id: int, proveedor_update: schemas.ProveedorUpdate, db: AsyncSession = Depends(get_db)):
-    """
-    Actualiza un proveedor. Principalmente para el **checkbox de disponibilidad**.
-    El frontend solo necesita enviar `{"disponible": false}`.
-    """
-    updated_proveedor = await crud.update_proveedor(db, proveedor_id=proveedor_id, proveedor_update=proveedor_update.dict())
-    if updated_proveedor is None:
+    updated = await crud.update_proveedor(db, proveedor_id, proveedor_update)
+    if updated is None:
         raise HTTPException(status_code=404, detail="Proveedor no encontrado")
-    return updated_proveedor
+    return updated
 
 
 class ChatRequest(BaseModel):
