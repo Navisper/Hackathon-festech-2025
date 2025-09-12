@@ -1,21 +1,20 @@
-# Dockerfile
+# Imagen base
+FROM python:3.13-slim
 
-# 1. Usar una imagen base oficial de Python
-FROM python:3.11-slim
+# Crear directorio de la app
+WORKDIR /app
 
-# 2. Establecer el directorio de trabajo dentro del contenedor
-WORKDIR /code
-
-# 3. Instalar dependencias para mantener la imagen ligera
+# Copiar dependencias
 COPY requirements.txt .
-RUN pip install uv && uv pip install --system --no-cache -r requirements.txt
 
-# 4. Copiar el código de la aplicación
-COPY ./app /code/app
+# Instalar dependencias
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. Exponer el puerto en el que correrá la aplicación
-EXPOSE 8000
+# Copiar el código de la app
+COPY . .
 
-# 6. Comando para iniciar la aplicación cuando el contenedor se ejecute
-# Se usa --host 0.0.0.0 para que la API sea accesible desde fuera del contenedor
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Exponer puerto 10000
+EXPOSE 10000
+
+# Comando para iniciar FastAPI
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "10000"]
