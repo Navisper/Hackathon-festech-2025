@@ -1,48 +1,71 @@
 # app/schemas.py
+from pydantic import BaseModel, EmailStr
+from typing import Optional, List
+from datetime import datetime
 
-from pydantic import BaseModel
-from typing import Optional
+# --- Esquemas para Reseñas (listos para usarse si hay tiempo) ---
+class ReseñaBase(BaseModel):
+    calificacion: int
+    comentario: Optional[str] = None
 
-# ----------------- Esquemas para Movie -----------------
-
-class MovieBase(BaseModel):
-    """
-    Esquema base que contiene los campos comunes para evitar repetición.
-    """
-    nombre: str
-    categoria: str
-    ano: int
-    director: str
-    duracion: int
-    calificacion: float
-
-class MovieCreate(MovieBase):
-    """
-    Esquema utilizado para la creación de una película.
-    Hereda todos los campos de MovieBase.
-    """
+class ReseñaCreate(ReseñaBase):
     pass
 
-class MovieUpdate(BaseModel):
+class Reseña(ReseñaBase):
+    id: int
+    class Config:
+        orm_mode = True
+
+# --- Esquemas para Proveedores (Actualizados) ---
+class ProveedorBase(BaseModel):
+    nombre: str
+    tipo_proveedor: str
+    descripcion_corta: str
+    telefono: str
+    direccion: str
+    ciudad: str
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
+
+class ProveedorCreate(ProveedorBase):
+    pass
+
+class ProveedorUpdate(BaseModel):
     """
-    Esquema para actualizar una película.
-    Todos los campos son opcionales, para permitir actualizaciones parciales.
+    Esquema para actualizar un proveedor.
+    Todos los campos son opcionales para permitir actualizaciones parciales.
     """
     nombre: Optional[str] = None
-    categoria: Optional[str] = None
-    ano: Optional[int] = None
-    director: Optional[str] = None
-    duracion: Optional[int] = None
-    calificacion: Optional[float] = None
+    tipo_proveedor: Optional[str] = None
+    descripcion_corta: Optional[str] = None
+    telefono: Optional[str] = None
+    direccion: Optional[str] = None
+    ciudad: Optional[str] = None
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
+    disponible: Optional[bool] = None # Campo clave para el checkbox
 
-class Movie(MovieBase):
-    """
-    Esquema utilizado para leer/devolver una película desde la API.
-    Hereda de MovieBase y añade el 'id' que es generado por la base de datos.
-    """
+
+# Esquema para la vista de lista
+class ProveedorResumen(BaseModel):
     id: int
+    nombre: str
+    tipo_proveedor: str
+    ciudad: str
+    disponible: bool
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
 
     class Config:
-        # Habilita el "modo ORM".
-        # Le permite a Pydantic leer datos directamente desde los modelos de SQLAlchemy.
+        orm_mode = True
+
+# Esquema para la vista de detalle
+class ProveedorDetalle(ProveedorResumen):
+    descripcion_corta: str
+    telefono: str
+    direccion: str
+    # Si implementan las reseñas, este campo ya estará listo para usarse
+    reseñas: List[Reseña] = []
+
+    class Config:
         orm_mode = True

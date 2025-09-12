@@ -34,54 +34,38 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 
-@app.post("/peliculas", response_model=schemas.Movie, status_code=status.HTTP_201_CREATED, tags=["Películas"])
-async def create_new_movie(movie: schemas.MovieCreate, db: AsyncSession = Depends(get_db)):
-    """
-    Crea una nueva película en la base de datos.
-    """
-    return await crud.create_movie(db=db, movie=movie)
+# --- Endpoints para Proveedores ---
 
+@app.post("/proveedores", response_model=schemas.ProveedorDetalle, status_code=status.HTTP_201_CREATED, tags=["Proveedores"])
+async def create_new_proveedor(proveedor: schemas.ProveedorCreate, db: AsyncSession = Depends(get_db)):
+    """Crea un nuevo proveedor. Usado por el formulario de registro."""
+    return await crud.create_proveedor(db=db, proveedor=proveedor.dict())
 
-@app.get("/peliculas", response_model=List[schemas.Movie], tags=["Películas"])
-async def read_movies(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
-    """
-    Obtiene una lista de todas las películas con paginación.
-    """
-    movies = await crud.get_movies(db, skip=skip, limit=limit)
-    return movies
+@app.get("/proveedores", response_model=List[schemas.ProveedorResumen], tags=["Proveedores"])
+async def read_proveedores(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    """Obtiene una lista de todos los proveedores para el mapa y la lista principal."""
+    proveedores = await crud.get_proveedores(db, skip=skip, limit=limit)
+    return proveedores
 
+@app.get("/proveedores/{proveedor_id}", response_model=schemas.ProveedorDetalle, tags=["Proveedores"])
+async def read_proveedor_details(proveedor_id: int, db: AsyncSession = Depends(get_db)):
+    """Obtiene la vista detallada de un solo proveedor."""
+    db_proveedor = await crud.get_proveedor(db, proveedor_id=proveedor_id)
+    if db_proveedor is None:
+        raise HTTPException(status_code=404, detail="Proveedor no encontrado")
+    return db_proveedor
 
-@app.get("/peliculas/{movie_id}", response_model=schemas.Movie, tags=["Películas"])
-async def read_movie(movie_id: int, db: AsyncSession = Depends(get_db)):
+@app.put("/proveedores/{proveedor_id}", response_model=schemas.ProveedorDetalle, tags=["Proveedores"])
+async def update_existing_proveedor(proveedor_id: int, proveedor_update: schemas.ProveedorUpdate, db: AsyncSession = Depends(get_db)):
     """
-    Obtiene los detalles de una película por su ID.
+    Actualiza un proveedor. Principalmente para el **checkbox de disponibilidad**.
+    El frontend solo necesita enviar `{"disponible": false}`.
     """
-    db_movie = await crud.get_movie(db, movie_id=movie_id)
-    if db_movie is None:
-        raise HTTPException(status_code=404, detail="Película no encontrada")
-    return db_movie
+    updated_proveedor = await crud.update_proveedor(db, proveedor_id=proveedor_id, proveedor_update=proveedor_update.dict())
+    if updated_proveedor is None:
+        raise HTTPException(status_code=404, detail="Proveedor no encontrado")
+    return updated_proveedor
 
-
-@app.put("/peliculas/{movie_id}", response_model=schemas.Movie, tags=["Películas"])
-async def update_existing_movie(movie_id: int, movie_update: schemas.MovieUpdate, db: AsyncSession = Depends(get_db)):
-    """
-    Actualiza una película existente por su ID.
-    """
-    updated_movie = await crud.update_movie(db, movie_id=movie_id, movie_update=movie_update)
-    if updated_movie is None:
-        raise HTTPException(status_code=404, detail="Película no encontrada")
-    return updated_movie
-
-
-@app.delete("/peliculas/{movie_id}", response_model=schemas.Movie, tags=["Películas"])
-async def delete_existing_movie(movie_id: int, db: AsyncSession = Depends(get_db)):
-    """
-    Elimina una película existente por su ID.
-    """
-    deleted_movie = await crud.delete_movie(db, movie_id=movie_id)
-    if deleted_movie is None:
-        raise HTTPException(status_code=404, detail="Película no encontrada")
-    return deleted_movie
 
 class ChatRequest(BaseModel):
     usuario: Optional[str] = None

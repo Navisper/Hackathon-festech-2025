@@ -1,62 +1,80 @@
 # app/crud.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-
+from typing import List, Optional
+from sqlalchemy.orm import selectinload
 from . import models, schemas
 
-async def get_movie(db: AsyncSession, movie_id: int):
-    """
-    Busca una película por su ID.
-    """
-    result = await db.execute(select(models.Movie).filter(models.Movie.id == movie_id))
+# --- Funciones CRUD para Proveedores ---
+
+async def get_proveedor(db: AsyncSession, proveedor_id: int):
+    """Busca un proveedor por su ID."""
+    query = (
+        select(models.Proveedor)
+        .where(models.Proveedor.id == proveedor_id)
+        .options(selectinload(models.Proveedor.reseñas))
+    )
+    result = await db.execute(query)
     return result.scalar_one_or_none()
 
-async def get_movies(db: AsyncSession, skip: int = 0, limit: int = 100):
-    """
-    Obtiene una lista de películas con paginación.
-    """
-    result = await db.execute(select(models.Movie).offset(skip).limit(limit))
+
+async def get_proveedores(db: AsyncSession, skip: int = 0, limit: int = 100):
+    """Obtiene una lista de todos los proveedores."""
+    result = await db.execute(select(models.Proveedor).offset(skip).limit(limit))
     return result.scalars().all()
 
-async def create_movie(db: AsyncSession, movie: schemas.MovieCreate):
-    """
-    Crea una nueva película en la base de datos.
-    """
-    # Convierte el schema de Pydantic a un modelo de SQLAlchemy
-    db_movie = models.Movie(**movie.dict())
-    db.add(db_movie)
+async def create_proveedor(db: AsyncSession, proveedor: schemas.ProveedorCreate):
+    """Crea un nuevo proveedor en la base de datos."""
+    db_proveedor = models.Proveedor(**proveedor.dict())
+    db.add(db_proveedor)
     await db.commit()
-    await db.refresh(db_movie) # Refresca el objeto para obtener el ID de la BD
-    return db_movie
+    await db.refresh(db_proveedor)
+    return await get_proveedor(db, db_proveedor.id)
 
-async def update_movie(db: AsyncSession, movie_id: int, movie_update: schemas.MovieUpdate):
+async def update_proveedor(db: AsyncSession, proveedor_id: int, proveedor_update: schemas.ProveedorUpdate):
     """
-    Actualiza una película existente.
+    Actualiza un proveedor existente.
+    Perfecto para el checkbox de disponibilidad.
     """
-    db_movie = await get_movie(db, movie_id)
-    if not db_movie:
+    db_proveedor = await get_proveedor(db, proveedor_id)
+    if not db_proveedor:
         return None
     
-    # Obtiene los datos del schema de actualización como un diccionario
-    # exclude_unset=True asegura que solo actualicemos los campos que el usuario envió
-    update_data = movie_update.dict(exclude_unset=True)
+    update_data = proveedor_update.dict(exclude_unset=True)
     
-    # Itera sobre los datos y actualiza los atributos del objeto SQLAlchemy
     for key, value in update_data.items():
-        setattr(db_movie, key, value)
+        setattr(db_proveedor, key, value)
         
     await db.commit()
-    await db.refresh(db_movie)
-    return db_movie
+    await db.refresh(db_proveedor)
+    return await get_proveedor(db, db_proveedor.id)
 
-async def delete_movie(db: AsyncSession, movie_id: int):
-    """
-    Elimina una película de la base de datos.
-    """
-    db_movie = await get_movie(db, movie_id)
-    if not db_movie:
+async def delete_proveedor(db: AsyncSession, proveedor_id: int):
+    """Elimina un proveedor de la base de datos."""
+    db_proveedor = await get_proveedor(db, proveedor_id)
+    if not db_proveedor:
         return None
     
-    await db.delete(db_movie)
+    await db.delete(db_proveedor)
     await db.commit()
-    return db_movie
+    return db_proveedor
+
+# --- (BONUS) Funciones CRUD para Reseñas (si hay tiempo) ---
+
+async def create_reseña_para_proveedor(db: AsyncSession, reseña: schemas.ReseñaCreate, proveedor_id: int):
+    """Crea una reseña y la asocia con un proveedor."""
+    db_reseña = models.Reseña(**reseña.dict(), proveedor_id=proveedor_id)
+    db.add(db_reseña)
+    await db.commit()
+    await db.refresh(db_reseña)
+    return db_reseña
+
+async def get_reseñas_de_proveedor(db: AsyncSession, proveedor_id: int, skip: int = 0, limit: int = 100):
+    """Obtiene todas las reseñas de un proveedor específico."""
+    result = await db.execute(
+        select(models.Reseña)
+        .filter(models.Reseña.proveedor_id == proveedor_id)
+        .offset(skip)
+        .limit(limit)
+    )
+    return result.scalars().all()
