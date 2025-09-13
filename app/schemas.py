@@ -51,6 +51,7 @@ class ProveedorResumen(BaseModel):
     id: int
     nombre: str
     tipo_proveedor: str
+    descripcion_corta: Optional[str]
     ciudad: str
     disponible: bool
     latitud: Optional[float] = None
