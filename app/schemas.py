@@ -70,3 +70,14 @@ class ProveedorDetalle(ProveedorResumen):
     class Config:
         # ----- CORRECCIÓN AQUÍ -----
         from_attributes = True
+
+class ProveedorMapa(BaseModel):
+    id: int
+    nombre: str
+    tipo_proveedor: str
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
+    descripcion_corta: Optional[str] = None
+
+    class Config:
+        from_attributes = True

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
-
+from .schemas import ProveedorMapa
 # Tus importaciones existentes
 from . import crud, models, schemas
 from .database import engine, get_db
@@ -78,6 +78,14 @@ async def delete_existing_proveedor(proveedor_id: int, db: AsyncSession = Depend
         raise HTTPException(status_code=404, detail="Proveedor no encontrado")
     return deleted_proveedor
 
+@app.get("/api/servicios", response_model=List[ProveedorMapa], tags=["Mapa"])
+async def get_proveedores_mapa(tipo: Optional[str] = None, db: AsyncSession = Depends(get_db)):
+    """
+    Devuelve proveedores con coordenadas (para el mapa).
+    Se puede filtrar por tipo (hotel, restaurante, transporte, atracción, etc.).
+    """
+    proveedores = await crud.get_proveedores_mapa(db, tipo)
+    return proveedores
 
 # --- (BONUS) Endpoints para Reseñas (Sin cambios) ---
 

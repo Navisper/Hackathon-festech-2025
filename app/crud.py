@@ -102,3 +102,15 @@ async def delete_reseña(db: AsyncSession, reseña_id: int):
     await db.delete(db_reseña)
     await db.commit()
     return db_reseña
+
+async def get_proveedores_mapa(db: AsyncSession, tipo: Optional[str] = None):
+    """Obtiene proveedores que tengan coordenadas, opcionalmente filtrados por tipo."""
+    query = select(models.Proveedor).where(
+        models.Proveedor.latitud.isnot(None),
+        models.Proveedor.longitud.isnot(None)
+    )
+    if tipo:
+        query = query.where(models.Proveedor.tipo_proveedor == tipo)
+
+    result = await db.execute(query)
+    return result.scalars().all()
